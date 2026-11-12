@@ -1,0 +1,12 @@
+{
+  "name": "ai-cfo-near",
+  "private": true,
+  "type": "module",
+  "description": "NEAR testnet setup and signing for AI CFO",
+  "dependencies": {
+    "near-api-js": "7.4.0"
+  },
+  "scripts": {
+    "setup": "node setup.mjs"
+  }
+}

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+data/
+*.db
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
+target/
+*.wasm
+.DS_Store
+*.tar.gz
+*.zip
+.cargo/

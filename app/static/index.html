@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI CFO: bank alerts in, books out</title>
+<style>
+  :root { --bg:#0c0f13; --panel:#141920; --panel2:#10151b; --line:#232a34; --text:#e8ecf1; --muted:#97a2b1;
+    --accent:#6ee7b7; --in:#4ade80; --out:#f87171; --warn:#fbbf24; --info:#7aa2f7; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif }
+  a { color:var(--accent) }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 20px }
+  header { padding:26px 0 18px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap }
+  h1 { margin:0; font-size:24px; letter-spacing:-.01em } h1 small { color:var(--muted); font-weight:500; font-size:15px; margin-left:8px }
+  .pills { display:flex; gap:8px; flex-wrap:wrap }
+  .pill { font:600 12px var(--mono); padding:5px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:var(--panel2) }
+  .pill.on { color:var(--accent); border-color:#245244 }
+  .banner { margin:16px 0 0; padding:12px 14px; border:1px solid #2b3f57; background:#0f1a26; border-radius:10px; color:#c9d6e6; font-size:14px }
+  .kpis { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin:18px 0 }
+  .kpi { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px }
+  .kpi .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em }
+  .kpi .v { font:700 18px var(--mono); margin-top:4px; white-space:nowrap }
+  .grid { display:grid; grid-template-columns:1.7fr 1fr; gap:16px; align-items:start }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px }
+  .card h2 { margin:0 0 4px; font-size:17px } .card .sub { color:var(--muted); font-size:13px; margin:0 0 12px }
+  button { background:var(--accent); color:#052016; border:0; border-radius:8px; padding:8px 14px; font-weight:700; cursor:pointer; font-size:14px }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line) } button:disabled { opacity:.55; cursor:wait }
+  select, textarea, input { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 9px; font:13px var(--mono) }
+  textarea { width:100%; min-height:110px }
+  td select { max-width:170px; font-size:12px }
+  table { width:100%; border-collapse:collapse; font-size:13.5px }
+  th, td { text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; font-weight:600 }
+  td.num, th.num { text-align:right; font-family:var(--mono); white-space:nowrap }
+  .in { color:var(--in) } .out { color:var(--out) }
+  .tag { display:inline-block; font:600 11px var(--mono); padding:2px 7px; border-radius:6px; border:1px solid var(--line); color:var(--muted); white-space:nowrap }
+  .tag.ai { color:var(--accent); border-color:#245244 } .tag.rev { color:var(--warn); border-color:#5a4718 } .tag.man { color:var(--info); border-color:#2a3a5e }
+  .desc { color:var(--muted); font-size:12.5px } .cp { font-weight:600 }
+  tr.click { cursor:pointer } tr.click:hover td { background:#121820 }
+  .bar { height:5px; border-radius:3px; background:#232a34; width:54px; display:inline-block; vertical-align:middle; overflow:hidden }
+  .bar i { display:block; height:100% }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px } .tabs button { background:var(--panel2); color:var(--muted); border:1px solid var(--line); font-weight:600 }
+  .tabs button.on { color:var(--text); border-color:#3a4554 }
+  .st td:first-child { color:var(--muted) } .st tr.total td { font-weight:700; color:var(--text); border-top:1px solid #3a4554 }
+  .st tr.head td { color:var(--text); font-weight:700; padding-top:14px }
+  .ok { color:var(--in); font-weight:700 } .bad { color:var(--out); font-weight:700 }
+  .samples { max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:10px }
+  .samples div { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13px }
+  .samples div:last-child { border-bottom:0 }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+  .mono { font-family:var(--mono); font-size:12px; word-break:break-all }
+  dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:14px; max-width:720px; width:92vw; padding:20px }
+  dialog::backdrop { background:rgba(0,0,0,.6) }
+  .toast { position:fixed; bottom:18px; right:18px; background:#13221c; border:1px solid #245244; color:var(--text); padding:10px 14px; border-radius:10px; display:none; max-width:380px; font-size:14px }
+  footer { color:var(--muted); font-size:13px; padding:20px 0 40px }
+  @media (max-width:1000px) { .kpis { grid-template-columns:repeat(2,1fr) } .grid { grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI CFO <small id="biz"></small></h1>
+    <div class="pills" id="pills"></div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div><h2>Transactions</h2><p class="sub">Every bank alert the agent read, how it was classified, and how sure it was. Change a category to correct it; the books update at once.</p></div>
+          <select id="filter"><option value="">All</option><option value="review">Needs review</option></select>
+        </div>
+        <div style="overflow-x:auto"><table id="txs"></table></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div><h2>Financial statements</h2><p class="sub" id="stnote"></p></div>
+          <select id="period"></select>
+        </div>
+        <div class="tabs" id="tabs"></div>
+        <div id="statement"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" id="feed">
+        <h2>Feed the agent</h2>
+        <p class="sub">Sample bank alerts (fictional banks, sample data). Each one is parsed, classified, posted to the books and sent to Telegram.</p>
+        <div class="row" style="margin-bottom:10px"><button id="all">Send all samples</button><button class="ghost" id="tg">Send summary to Telegram</button></div>
+        <div class="samples" id="samples"></div>
+        <details style="margin-top:12px"><summary class="desc" style="cursor:pointer">Paste a bank alert email</summary>
+          <input id="psub" placeholder="Subject" style="width:100%;margin:8px 0">
+          <textarea id="pbody" placeholder="Email body"></textarea>
+          <div class="row" style="margin-top:8px"><button id="paste">Record it</button></div>
+        </details>
+      </div>
+      <div class="card">
+        <h2>Tamper-evident books on NEAR</h2>
+        <p class="sub">The period's ledger and statements are fingerprinted (SHA-256) and the fingerprints are written to a NEAR contract. No amounts or names go on chain. Anyone shown these books can check they were not changed afterwards.</p>
+        <div id="near"></div>
+        <div class="row" style="margin-top:10px"><button id="anchor">Anchor this period on NEAR</button><button class="ghost" id="verify">Verify against NEAR</button></div>
+        <div id="nearout" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>How the agent works</h2>
+        <p class="sub" style="margin:0">1. Read the bank alert and extract amount, direction, date, counterparty, reference.<br>2. Mask account numbers, then classify privately on NEAR AI Cloud (TEE). Save the signed proof.<br>3. Post balanced double-entry lines. Low confidence goes to review instead of guessing.<br>4. Notify Telegram. Build P&amp;L, balance sheet, cash flow and capital position.<br>5. Anchor the period's fingerprints on NEAR testnet.</p>
+      </div>
+    </div>
+  </div>
+  <footer>Cash-basis statements from bank alerts: no accruals, depreciation or stock count; not audited or tax-ready. Built at NEAR HACKATHON. <a href="https://github.com/payguard-test/ai-cfo">Source</a></footer>
+</div>
+
+<dialog id="dlg"><div id="dlgbody"></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="ghost" onclick="dlg.close()">Close</button></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const STATIC = window.AICFO_SNAPSHOT || null;            // set by docs/data.js on the public demo site
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const money = (minor) => (minor < 0 ? "-" : "") + "₦" + (Math.abs(minor) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let CFG = null, PERIOD = "all", TAB = "income";
+
+async function api(path, opts) {
+  if (STATIC) return STATIC.api[path];
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || r.statusText);
+  return j;
+}
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 4000); }
+
+function pills() {
+  const p = $("pills"); p.textContent = "";
+  const add = (on, txt) => p.appendChild(el("span", "pill" + (on ? " on" : ""), txt));
+  add(CFG.ai.enabled, CFG.ai.enabled ? "NEAR AI · " + CFG.ai.model : "AI off · keyword rules");
+  add(CFG.telegram, CFG.telegram ? "Telegram on" : "Telegram off");
+  add(CFG.inbox, CFG.inbox ? "Inbox reader on" : "Sample alerts");
+  add(!!CFG.near.contract, CFG.near.contract ? "NEAR · " + CFG.near.contract : "NEAR contract not set");
+}
+
+async function kpis() {
+  const r = await api("/api/reports/" + PERIOD);
+  const inc = r.income_statement, bs = r.balance_sheet;
+  const items = [["Net revenue", inc.revenue["Net revenue"]], ["Costs and expenses", inc.cost_of_sales.Total + inc.total_operating_expenses],
+    ["Net profit", inc.net_profit], ["Cash at bank", bs.assets["Cash at bank"]], ["Owner capital", r.capital["Owner capital invested"]],
+    ["Loans", bs.liabilities["Loans payable"]], ["To review", null]];
+  const k = $("kpis"); k.textContent = "";
+  for (const [l, v] of items) {
+    const d = el("div", "kpi"); d.appendChild(el("div", "l", l));
+    const val = el("div", "v", v === null ? String(r.review_count) : money(v));
+    if (l === "Net profit") val.className += v < 0 ? " out" : " in";
+    if (l === "To review" && r.review_count) val.style.color = "var(--warn)";
+    d.appendChild(val); k.appendChild(d);
+  }
+  return r;
+}
+
+function proofTag(t) {
+  if (t.classifier === "manual") return el("span", "tag man", "confirmed");
+  if (t.classifier === "near-ai") return el("span", "tag ai", t.ai_proof_status === "verified" ? "private AI ✓" : "private AI");
+  return el("span", "tag", "rules");
+}
+
+async function txs() {
+  const rows = await api("/api/transactions" + ($("filter").value ? "?status=review" : ""));
+  const list = STATIC && $("filter").value ? rows.filter(r => r.status === "review") : rows;
+  const t = $("txs"); t.textContent = "";
+  const h = el("tr"); for (const c of ["Date", "Counterparty / description", "Amount", "Category", "Sure", "By"]) h.appendChild(el("th", c === "Amount" ? "num" : "", c)); t.appendChild(h);
+  if (!list.length) { const tr = el("tr"); const td = el("td", "desc", STATIC ? "No transactions in the snapshot." : "No transactions yet. Send the sample alerts on the right."); td.colSpan = 6; tr.appendChild(td); t.appendChild(tr); }
+  for (const x of list) {
+    const tr = el("tr", "click");
+    const dt = el("td", "mono", x.occurred_at); dt.style.whiteSpace = "nowrap"; tr.appendChild(dt);
+    const d = el("td"); const named = x.counterparty && x.counterparty !== "Unspecified"; d.appendChild(el("div", "cp", named ? x.counterparty : x.narration.slice(0, 50))); d.appendChild(el("div", "desc", (named ? x.narration.slice(0, 70) + " · " : "") + x.bank)); tr.appendChild(d);
+    tr.appendChild(el("td", "num " + (x.direction === "credit" ? "in" : "out"), (x.direction === "credit" ? "+" : "-") + money(x.amount_minor)));
+    const cat = el("td");
+    if (STATIC) cat.appendChild(el("span", "", x.category_label));
+    else {
+      const s = el("select"); s.onclick = (e) => e.stopPropagation();
+      for (const c of CFG.categories.filter(c => c.direction === x.direction)) { const o = el("option", "", c.label); o.value = c.key; o.selected = c.key === x.category; s.appendChild(o); }
+      s.onchange = async () => { try { await api(`/api/transactions/${x.id}/category`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ category: s.value }) }); toast("Updated. Books re-posted."); refresh(); } catch (e) { toast(e.message); } };
+      cat.appendChild(s);
+    }
+    if (x.status === "review") { cat.appendChild(document.createElement("br")); cat.appendChild(el("span", "tag rev", "needs review")); }
+    tr.appendChild(cat);
+    const conf = el("td"); const bar = el("span", "bar"); const i = el("i"); i.style.width = Math.round(x.confidence * 100) + "%"; i.style.background = x.confidence >= .75 ? "var(--in)" : "var(--warn)"; bar.appendChild(i); conf.appendChild(bar); conf.appendChild(el("span", "desc", " " + Math.round(x.confidence * 100) + "%")); tr.appendChild(conf);
+    const by = el("td"); by.appendChild(proofTag(x)); tr.appendChild(by);
+    tr.onclick = () => detail(x.id, x);
+    t.appendChild(tr);
+  }
+}
+
+async function detail(id, x) {
+  const d = STATIC ? x : await api("/api/transactions/" + id);
+  const b = $("dlgbody"); b.textContent = "";
+  b.appendChild(el("h2", "", (d.direction === "credit" ? "Money in " : "Money out ") + money(d.amount_minor)));
+  const tbl = el("table");
+  const add = (k, v) => { const tr = el("tr"); tr.appendChild(el("td", "desc", k)); tr.appendChild(el("td", "mono", v)); tbl.appendChild(tr); };
+  add("Date", d.occurred_at); add("Bank", d.bank + (d.account_masked ? " · " + d.account_masked : "")); add("Counterparty", d.counterparty); add("Description", d.narration);
+  add("Reference", d.reference); add("Category", d.category_label + " (" + Math.round(d.confidence * 100) + "% · " + d.classifier + ")"); add("Reason", d.reason || "-");
+  if (d.ai_model) add("AI model", d.ai_model + (d.ai_chat_id ? " · chat " + d.ai_chat_id : ""));
+  if (d.journal) add("Journal", d.journal.map(j => `${j.side === "debit" ? "Dr" : "Cr"} ${j.account} ${money(j.amount_minor)}`).join("\n"));
+  b.appendChild(tbl);
+  if (d.ai_proof) {
+    b.appendChild(el("h3", "", "Private inference proof: " + d.ai_proof.status));
+    b.appendChild(el("p", "desc", d.ai_proof.detail || ""));
+    const pt = el("table"); const padd = (k, v) => { const tr = el("tr"); tr.appendChild(el("td", "desc", k)); tr.appendChild(el("td", "mono", String(v))); pt.appendChild(tr); };
+    for (const [k, v] of Object.entries(d.ai_proof.checks || {})) padd(k, v);
+    if (d.ai_proof.signing_address) padd("TEE signing address", d.ai_proof.signing_address);
+    if (d.ai_proof.response_hash) padd("sha256(response)", d.ai_proof.response_hash);
+    if (d.ai_proof.signature_kind) padd("signed by", d.ai_proof.signature_kind);
+    b.appendChild(pt);
+  }
+  $("dlg").showModal();
+}
+
+const TABS = [["income", "Profit and loss"], ["balance", "Balance sheet"], ["cash", "Cash flow"], ["capital", "Capital"], ["trial", "Trial balance"]];
+function statementTable(rows) {
+  const t = el("table", "st");
+  for (const [k, v, cls] of rows) { const tr = el("tr", cls || ""); tr.appendChild(el("td", "", k)); tr.appendChild(el("td", "num", v === null ? "" : (typeof v === "string" ? v : money(v)))); t.appendChild(tr); }
+  return t;
+}
+async function statements(r) {
+  const tabs = $("tabs"); tabs.textContent = "";
+  for (const [k, l] of TABS) { const b = el("button", TAB === k ? "on" : "", l); b.onclick = () => { TAB = k; statements(r); }; tabs.appendChild(b); }
+  $("stnote").textContent = r.note;
+  const inc = r.income_statement, bs = r.balance_sheet, cf = r.cash_flow; let rows = [];
+  if (TAB === "income") {
+    rows = [["Revenue", null, "head"], ["Sales", inc.revenue.Sales], ["Less: refunds to customers", inc.revenue["Less: refunds to customers"]], ["Net revenue", inc.revenue["Net revenue"], "total"],
+      ["Cost of sales", null, "head"], ["Stock and ingredients", inc.cost_of_sales["Stock and ingredients"]], ["Gross profit", inc.gross_profit, "total"],
+      ["Operating expenses", null, "head"], ...Object.entries(inc.operating_expenses), ["Total operating expenses", inc.total_operating_expenses, "total"]];
+    if (inc.other_income) rows.push(["Other income", inc.other_income]);
+    rows.push(["Net profit", inc.net_profit, "total"]);
+    if (inc.gross_margin_pct !== null) rows.push(["Gross margin", inc.gross_margin_pct + "%"]);
+  } else if (TAB === "balance") {
+    rows = [["Assets", null, "head"], ...Object.entries(bs.assets), ["Total assets", bs.total_assets, "total"], ["Liabilities", null, "head"], ...Object.entries(bs.liabilities),
+      ["Equity", null, "head"], ...Object.entries(bs.equity), ["Total liabilities and equity", bs.total_liabilities_and_equity, "total"], ["Balances", bs.balances ? "Yes ✓" : "No ⚠"]];
+  } else if (TAB === "cash") {
+    rows = [["Operating", null, "head"], ...Object.entries(cf.operating).map(([k, v]) => [k, v, k.startsWith("Net") ? "total" : ""]),
+      ["Investing", null, "head"], ...Object.entries(cf.investing).map(([k, v]) => [k, v, k.startsWith("Net") ? "total" : ""]),
+      ["Financing", null, "head"], ...Object.entries(cf.financing).map(([k, v]) => [k, v, k.startsWith("Net") ? "total" : ""]),
+      ["Transfers between own accounts", null, "head"], ...Object.entries(cf.internal_transfers), ["Net change in cash", cf.net_change_in_cash, "total"]];
+  } else if (TAB === "capital") {
+    rows = Object.entries(r.capital).map(([k, v], i, a) => [k, v, i === a.length - 1 ? "total" : ""]);
+  } else {
+    const tb = r.trial_balance; const t = el("table", "st");
+    const h = el("tr"); for (const c of ["Account", "Debit", "Credit"]) h.appendChild(el("th", c === "Account" ? "" : "num", c)); t.appendChild(h);
+    for (const a of tb.accounts) { const tr = el("tr"); tr.appendChild(el("td", "", a.account)); tr.appendChild(el("td", "num", a.debit ? money(a.debit) : "")); tr.appendChild(el("td", "num", a.credit ? money(a.credit) : "")); t.appendChild(tr); }
+    const tr = el("tr", "total"); tr.appendChild(el("td", "", tb.balanced ? "Totals (balanced ✓)" : "Totals (not balanced ⚠)")); tr.appendChild(el("td", "num", money(tb.total_debit))); tr.appendChild(el("td", "num", money(tb.total_credit))); t.appendChild(tr);
+    $("statement").textContent = ""; $("statement").appendChild(t); return;
+  }
+  $("statement").textContent = ""; $("statement").appendChild(statementTable(rows));
+}
+
+async function nearCard() {
+  const fp = await api("/api/near/fingerprint/" + PERIOD);
+  const n = $("near"); n.textContent = "";
+  const t = el("table"); const add = (k, v) => { const tr = el("tr"); tr.appendChild(el("td", "desc", k)); tr.appendChild(el("td", "mono", v)); t.appendChild(tr); };
+  add("Period", fp.period); add("Transactions", String(fp.tx_count)); add("Books root", fp.books_root); add("Statements hash", fp.report_hash);
+  if (CFG.near.contract) { const tr = el("tr"); tr.appendChild(el("td", "desc", "Contract")); const td = el("td", "mono"); const a = el("a", "", CFG.near.contract); a.href = "https://testnet.nearblocks.io/address/" + CFG.near.contract; a.target = "_blank"; td.appendChild(a); tr.appendChild(td); t.appendChild(tr); }
+  n.appendChild(t);
+  $("anchor").hidden = !!STATIC;
+}
+
+async function verifyNear() {
+  const out = $("nearout"); out.textContent = "Checking NEAR testnet…";
+  try {
+    let v;
+    if (STATIC) {   // the public site checks the chain straight from your browser
+      const fp = STATIC.api["/api/near/fingerprint/" + PERIOD];
+      const args = btoa(JSON.stringify({ period: PERIOD }));
+      const r = await fetch("https://test.rpc.fastnear.com", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "final", account_id: CFG.near.contract, method_name: "get_latest", args_base64: args } }) }).then(r => r.json());
+      const onChain = JSON.parse(new TextDecoder().decode(new Uint8Array(r.result.result)) || "null");
+      const match = !!onChain && onChain.books_root === fp.books_root && onChain.report_hash === fp.report_hash;
+      v = { ...fp, anchored: onChain, match, detail: match ? "books match what was anchored on NEAR" : onChain ? "books changed since they were anchored" : "nothing anchored for this period yet" };
+    } else v = await api("/api/near/verify/" + PERIOD);
+    out.textContent = "";
+    out.appendChild(el("div", v.match ? "ok" : "bad", (v.match ? "✓ " : "✗ ") + v.detail));
+    if (v.anchored) out.appendChild(el("div", "desc", `Anchored ${new Date(Number(v.anchored.anchored_at) / 1e6).toLocaleString()} by ${v.anchored.anchored_by}, ${v.anchored.tx_count} transactions`));
+  } catch (e) { out.textContent = "Could not verify: " + e.message; }
+}
+
+async function anchorNear() {
+  const b = $("anchor"); b.disabled = true; $("nearout").textContent = "Sending to NEAR testnet…";
+  try {
+    const r = await api("/api/near/anchor/" + PERIOD, { method: "POST" });
+    const out = $("nearout"); out.textContent = ""; out.appendChild(el("div", "ok", "✓ Anchored on NEAR testnet"));
+    const a = el("a", "mono", r.near_tx); a.href = r.explorer; a.target = "_blank"; out.appendChild(a);
+  } catch (e) { $("nearout").textContent = "Anchor failed: " + e.message; }
+  b.disabled = false;
+}
+
+async function samples() {
+  if (STATIC) { $("feed").hidden = true; return; }
+  const list = await api("/api/demo/samples"); const s = $("samples"); s.textContent = "";
+  for (const x of list) {
+    const d = el("div"); const lines = x.body.split("\n").filter(l => /narration|desc|details/i.test(l));
+    d.appendChild(el("span", "", (lines[0] || x.subject).replace(/^\s*(narration|desc|details)\s*:\s*/i, "").slice(0, 46)));
+    const b = el("button", "ghost", "Send"); b.onclick = async () => { b.disabled = true; try { const r = await api("/api/demo/sample/" + x.index, { method: "POST" }); toast(`Recorded as ${r.category_label} (${Math.round(r.confidence * 100)}%)`); refresh(); } catch (e) { toast(e.message); } b.disabled = false; };
+    d.appendChild(b); s.appendChild(d);
+  }
+}
+
+async function periods() {
+  const ps = await api("/api/periods"); const s = $("period"); s.textContent = "";
+  for (const p of ps) { const o = el("option", "", p === "all" ? "All time" : p); o.value = p; o.selected = p === PERIOD; s.appendChild(o); }
+}
+
+async function refresh() { const r = await kpis(); await Promise.all([txs(), statements(r), nearCard(), periods()]); }
+
+(async () => {
+  CFG = await api("/api/config");
+  $("biz").textContent = CFG.business; pills();
+  if (STATIC) { $("banner").hidden = false; $("banner").textContent = `Read-only snapshot of the demo run (${STATIC.generated}). Data comes from fictional sample bank alerts. "Verify against NEAR" checks the live testnet contract from your browser. Run it yourself: see the GitHub README.`; }
+  $("filter").onchange = txs; $("period").onchange = (e) => { PERIOD = e.target.value; refresh(); };
+  $("verify").onclick = verifyNear; $("anchor").onclick = anchorNear;
+  $("tg").onclick = async () => { const r = await api("/api/telegram/summary", { method: "POST" }); toast(r.sent ? "Summary sent to Telegram" : "Telegram not configured (see README)"); };
+  $("all").onclick = async () => { $("all").disabled = true; let n = 0; for (const x of await api("/api/demo/samples")) { try { await api("/api/demo/sample/" + x.index, { method: "POST" }); n++; } catch (e) {} } toast(`Recorded ${n} new transaction(s)`); $("all").disabled = false; refresh(); };
+  $("paste").onclick = async () => { try { const r = await api("/api/demo/paste", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subject: $("psub").value, body: $("pbody").value }) }); toast(`Recorded as ${r.category_label}`); $("pbody").value = ""; refresh(); } catch (e) { toast(e.message); } };
+  await samples(); await refresh();
+})();
+</script>
+</body>
+</html>

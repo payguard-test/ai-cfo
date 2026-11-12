@@ -1,0 +1,97 @@
+[
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Credit Alert [NGN 500,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: CR\nAmount: NGN 500,000.00\nNarration: CAPITAL INJECTION FROM OWNER ADEBAYO OLUWASEUN\nReference: LGB2611010001\nValue Date: 01-Nov-2026\nAvailable Balance: NGN 500,000.00\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "noreply@harbormfb.example",
+  "subject": "Harbor MFB Transaction Notification",
+  "body": "Your account 22****8810 has been credited with N1,000,000.00 on 02/11/2026.\nDesc: Loan disbursement SME working capital facility 4471\nSession ID: HMF261102778\nBal: N1,000,000.00\n\nHarbor MFB (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 250,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 250,000.00\nNarration: SHOP RENT NOVEMBER TO ALHAJI BELLO PROPERTIES\nReference: LGB2611030002\nValue Date: 03-Nov-2026\nAvailable Balance: NGN 250,000.00\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "notify@cowriepay.example",
+  "subject": "Cowrie Pay: Money sent",
+  "body": "Outflow of ₦180,000.00\nTo: MILE 12 FOODSTUFF WHOLESALE\nDetails: Bulk rice and vegetable oil wholesale\nTransaction ID: CWP-77310\nTime: 2026-11-03 14:32\nAvail Bal: ₦70,000.00\n\nCowrie Pay (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Credit Alert [NGN 125,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: CR\nAmount: NGN 125,000.00\nNarration: PAYMENT FOR CATERING ORDER FROM LEKKI EVENTS LTD\nReference: LGB2611040003\nValue Date: 04-Nov-2026\nAvailable Balance: NGN 375,000.00\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 18,500.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 18,500.00\nNarration: DIESEL FOR GENERATOR FROM TOTAL FILLING STATION\nReference: LGB2611040004\nValue Date: 04-Nov-2026\nAvailable Balance: NGN 356,500.00\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "notify@cowriepay.example",
+  "subject": "Cowrie Pay: You received money",
+  "body": "Inflow of ₦64,200.00\nFrom: COWRIE POS SETTLEMENT\nDetails: POS settlement daily sales\nTransaction ID: CWP-77455\nTime: 2026-11-05 14:32\nAvail Bal: ₦134,200.00\n\nCowrie Pay (sample data)"
+ },
+ {
+  "sender": "noreply@harbormfb.example",
+  "subject": "Harbor MFB Transaction Notification",
+  "body": "Your account 22****8810 has been debited with N420,000.00 on 05/11/2026.\nDesc: HP laptop for accounts and orders\nSession ID: HMF261105991\nBal: N580,000.00\n\nHarbor MFB (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 90,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 90,000.00\nNarration: SALARY NOV KITCHEN ASSISTANT TO CHIOMA EZE\nReference: LGB2611060005\nValue Date: 06-Nov-2026\nAvailable Balance: NGN 266,500.00\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 53.75]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 53.75\nNarration: SMS ALERT CHARGES OCT\nReference: LGB2611060006\nValue Date: 06-Nov-2026\nAvailable Balance: NGN 266,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "notify@cowriepay.example",
+  "subject": "Cowrie Pay: You received money",
+  "body": "Inflow of ₦40,000.00\nFrom: JOHN DOE\nDetails: Transfer\nTransaction ID: CWP-77602\nTime: 2026-11-07 14:32\nAvail Bal: ₦174,200.00\n\nCowrie Pay (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 50,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 50,000.00\nNarration: PERSONAL WITHDRAWAL BY OWNER ATM LEKKI\nReference: LGB2611070007\nValue Date: 07-Nov-2026\nAvailable Balance: NGN 216,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 15,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 15,000.00\nNarration: REFUND TO CUSTOMER FOR CANCELLED ORDER TOLU A.\nReference: LGB2611080008\nValue Date: 08-Nov-2026\nAvailable Balance: NGN 201,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "noreply@harbormfb.example",
+  "subject": "Harbor MFB Transaction Notification",
+  "body": "Your account 22****8810 has been debited with N100,000.00 on 08/11/2026.\nDesc: Transfer to own Lagoon Bank account\nSession ID: HMF261108120\nBal: N480,000.00\n\nHarbor MFB (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Credit Alert [NGN 100,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: CR\nAmount: NGN 100,000.00\nNarration: TRANSFER FROM OWN HARBOR MFB ACCOUNT\nReference: LGB2611080009\nValue Date: 08-Nov-2026\nAvailable Balance: NGN 301,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Credit Alert [NGN 210,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: CR\nAmount: NGN 210,000.00\nNarration: PAYMENT FOR 30 PACKS JOLLOF FROM VI TECH HUB\nReference: LGB2611090010\nValue Date: 09-Nov-2026\nAvailable Balance: NGN 511,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ },
+ {
+  "sender": "notify@cowriepay.example",
+  "subject": "Cowrie Pay: Money sent",
+  "body": "Outflow of ₦22,500.00\nTo: META ADS\nDetails: Instagram ads for weekend promo\nTransaction ID: CWP-77810\nTime: 2026-11-09 14:32\nAvail Bal: ₦151,700.00\n\nCowrie Pay (sample data)"
+ },
+ {
+  "sender": "noreply@harbormfb.example",
+  "subject": "Harbor MFB Transaction Notification",
+  "body": "Your account 22****8810 has been debited with N83,333.00 on 10/11/2026.\nDesc: Loan repayment instalment 1 of 12\nSession ID: HMF261110455\nBal: N396,667.00\n\nHarbor MFB (sample data)"
+ },
+ {
+  "sender": "alerts@lagoonbank.example",
+  "subject": "Lagoon Bank Debit Alert [NGN 12,000.00]",
+  "body": "Dear Customer,\n\nA transaction has occurred on your account.\n\nAccount Number: 0123456789\nTxn Type: DR\nAmount: NGN 12,000.00\nNarration: VAT REMITTANCE FIRS OCT\nReference: LGB2611100011\nValue Date: 10-Nov-2026\nAvailable Balance: NGN 499,446.25\n\nThank you for banking with Lagoon Bank (sample data)."
+ }
+]
