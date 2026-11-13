@@ -4,7 +4,7 @@ An AI bookkeeping agent for small businesses. It reads the bank alert emails a b
 
 Built at NEAR HACKATHON. Tracks: Real-World Money (`realworld`), Privacy & Private AI (`privacy`).
 
-**Live demo (read-only snapshot):** https://payguard-test.github.io/ai-cfo/
+**Live demo:** https://ai-cfo-quzw.onrender.com (click Start over, then Send all samples; the first load can take up to a minute while the free server wakes). Recorded snapshot: https://payguard-test.github.io/ai-cfo/snapshot.html
 **Demo video:** see the X post linked in the submission.
 
 ## The problem
