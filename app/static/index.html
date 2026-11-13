@@ -283,10 +283,13 @@ async function verifyNear() {
     if (STATIC) {   // the public site checks the chain straight from your browser
       const fp = STATIC.api["/api/near/fingerprint/" + PERIOD];
       const args = btoa(JSON.stringify({ period: PERIOD }));
-      const r = await fetch("https://test.rpc.fastnear.com", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "final", account_id: CFG.near.contract, method_name: "get_latest", args_base64: args } }) }).then(r => r.json());
-      const onChain = JSON.parse(new TextDecoder().decode(new Uint8Array(r.result.result)) || "null");
-      const match = !!onChain && onChain.books_root === fp.books_root && onChain.report_hash === fp.report_hash;
-      v = { ...fp, anchored: onChain, match, detail: match ? "books match what was anchored on NEAR" : onChain ? "books changed since they were anchored" : "nothing anchored for this period yet" };
+      const call = async (method) => { const r = await fetch("https://test.rpc.fastnear.com", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "final", account_id: CFG.near.contract, method_name: method, args_base64: args } }) }).then(r => r.json()); return JSON.parse(new TextDecoder().decode(new Uint8Array(r.result.result)) || "null"); };
+      const history = (await call("get_history")) || [];
+      const hit = history.filter(a => a.books_root === fp.books_root && a.report_hash === fp.report_hash).pop();
+      const latest = history[history.length - 1];
+      const isLatest = !!hit && hit === latest;
+      v = { ...fp, anchored: hit || latest, match: !!hit,
+        detail: hit ? (isLatest ? "books match what was anchored on NEAR" : "books match an anchor on NEAR (the period was anchored again later, from a newer demo run)") : history.length ? "books do not match any anchor on NEAR" : "nothing anchored for this period yet" };
     } else v = await api("/api/near/verify/" + PERIOD);
     out.textContent = "";
     out.appendChild(el("div", v.match ? "ok" : "bad", (v.match ? "✓ " : "✗ ") + v.detail));
