@@ -47,6 +47,11 @@
   .tabs button.on { color:var(--text); border-color:#3a4554 }
   .st td:first-child { color:var(--muted) } .st tr.total td { font-weight:700; color:var(--text); border-top:1px solid #3a4554 }
   .st tr.head td { color:var(--text); font-weight:700; padding-top:14px }
+  .grid > div { min-width:0 }
+  .dim { opacity:.3; pointer-events:none; transition:opacity .3s }
+  tr.flash td { animation:flash 1.4s ease-out } @keyframes flash { from { background:#1d3b31 } to { background:transparent } }
+  .rlog { max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:6px; margin-top:10px }
+  .rlog div { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:13px }
   .ok { color:var(--in); font-weight:700 } .bad { color:var(--out); font-weight:700 }
   .samples { max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:10px }
   .samples div { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:7px 10px; border-bottom:1px solid var(--line); font-size:13px }
@@ -79,7 +84,7 @@
         </div>
         <div style="overflow-x:auto"><table id="txs"></table></div>
       </div>
-      <div class="card">
+      <div class="card" id="stcard">
         <div class="row" style="justify-content:space-between">
           <div><h2>Financial statements</h2><p class="sub" id="stnote"></p></div>
           <select id="period"></select>
@@ -100,7 +105,7 @@
           <div class="row" style="margin-top:8px"><button id="paste">Record it</button></div>
         </details>
       </div>
-      <div class="card">
+      <div class="card" id="nearcard">
         <h2>Tamper-evident books on NEAR</h2>
         <p class="sub">The period's ledger and statements are fingerprinted (SHA-256) and the fingerprints are written to a NEAR contract. No amounts or names go on chain. Anyone shown these books can check they were not changed afterwards.</p>
         <div id="near"></div>
@@ -125,9 +130,10 @@ const STATIC = window.AICFO_SNAPSHOT || null;            // set by docs/data.js 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const money = (minor) => (minor < 0 ? "-" : "") + "₦" + (Math.abs(minor) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-let CFG = null, PERIOD = "all", TAB = "income";
+let CFG = null, PERIOD = "all", TAB = "income", REPLAY = null;
 
 async function api(path, opts) {
+  if (STATIC && REPLAY && path.startsWith("/api/transactions")) return REPLAY;
   if (STATIC) return STATIC.api[path];
   const r = await fetch(path, opts);
   const j = await r.json().catch(() => ({}));
@@ -145,21 +151,54 @@ function pills() {
   add(!!CFG.near.contract, CFG.near.contract ? "NEAR · " + CFG.near.contract : "NEAR contract not set");
 }
 
+function renderKpis(items, review) {
+  const k = $("kpis"); k.textContent = "";
+  for (const [l, v] of items.concat([["To review", null]])) {
+    const d = el("div", "kpi"); d.appendChild(el("div", "l", l));
+    const val = el("div", "v", v === null ? String(review) : money(v));
+    if (l === "Net profit") val.className += v < 0 ? " out" : " in";
+    if (l === "To review" && review) val.style.color = "var(--warn)";
+    d.appendChild(val); k.appendChild(d);
+  }
+}
 async function kpis() {
   const r = await api("/api/reports/" + PERIOD);
   const inc = r.income_statement, bs = r.balance_sheet;
-  const items = [["Net revenue", inc.revenue["Net revenue"]], ["Costs and expenses", inc.cost_of_sales.Total + inc.total_operating_expenses],
+  renderKpis([["Net revenue", inc.revenue["Net revenue"]], ["Costs and expenses", inc.cost_of_sales.Total + inc.total_operating_expenses],
     ["Net profit", inc.net_profit], ["Cash at bank", bs.assets["Cash at bank"]], ["Owner capital", r.capital["Owner capital invested"]],
-    ["Loans", bs.liabilities["Loans payable"]], ["To review", null]];
-  const k = $("kpis"); k.textContent = "";
-  for (const [l, v] of items) {
-    const d = el("div", "kpi"); d.appendChild(el("div", "l", l));
-    const val = el("div", "v", v === null ? String(r.review_count) : money(v));
-    if (l === "Net profit") val.className += v < 0 ? " out" : " in";
-    if (l === "To review" && r.review_count) val.style.color = "var(--warn)";
-    d.appendChild(val); k.appendChild(d);
-  }
+    ["Loans", bs.liabilities["Loans payable"]]], r.review_count);
   return r;
+}
+// running totals while the public site replays the recorded run (the real statements are shown when it ends)
+const COSTS = ["cost_of_sales", "rent", "salaries", "utilities", "marketing", "transport", "bank_charges", "taxes", "other_expense"];
+function replayKpis(list) {
+  const sum = (f) => list.filter(f).reduce((a, t) => a + t.amount_minor, 0), c = (k) => sum(t => t.category === k);
+  const revenue = c("sales") - c("refund_paid"), costs = COSTS.reduce((a, k) => a + c(k), 0);
+  renderKpis([["Net revenue", revenue], ["Costs and expenses", costs], ["Net profit", revenue + c("other_income") - costs],
+    ["Cash at bank", sum(t => t.direction === "credit") - sum(t => t.direction === "debit")], ["Owner capital", c("capital")],
+    ["Loans", c("loan_received") - c("loan_repayment")]], list.filter(t => t.status === "review").length);
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function replay() {
+  const btn = $("replay"), log = $("rlog"); btn.disabled = true; log.textContent = "";
+  const all = STATIC.api["/api/transactions"].slice().sort((a, b) => (a.occurred_at + String(a.id).padStart(6, "0")).localeCompare(b.occurred_at + String(b.id).padStart(6, "0")));
+  $("filter").value = ""; $("nearout").textContent = "";
+  for (const id of ["stcard", "nearcard"]) $(id).classList.add("dim");
+  REPLAY = []; replayKpis(REPLAY); await txs();
+  for (const t of all) {
+    btn.textContent = `Reading alert ${REPLAY.length + 1} of ${all.length}…`;
+    REPLAY.unshift(t); replayKpis(REPLAY); await txs();
+    const row = $("txs").rows[1]; if (row) row.classList.add("flash");
+    const msg = el("div");
+    msg.appendChild(el("b", t.direction === "credit" ? "in" : "out", `📱 ${t.direction === "credit" ? "Money in" : "Money out"} ${money(t.amount_minor)}`));
+    msg.appendChild(document.createTextNode(` · ${t.counterparty !== "Unspecified" ? t.counterparty : t.narration.slice(0, 40)} → ${t.category_label} (${Math.round(t.confidence * 100)}%${t.ai_proof_status === "verified" ? ", private AI ✓" : ""})${t.status === "review" ? " ⚠️ needs review" : ""}`));
+    log.prepend(msg);
+    await sleep(t.status === "review" ? 2200 : 1100);
+  }
+  REPLAY = null; for (const id of ["stcard", "nearcard"]) $(id).classList.remove("dim");
+  await refresh();
+  btn.textContent = "↻ Replay again"; btn.disabled = false;
+  toast(`${all.length} alerts recorded. Statements are ready below.`);
 }
 
 function proofTag(t) {
@@ -309,7 +348,13 @@ async function anchorNear() {
 }
 
 async function samples() {
-  if (STATIC) { $("feed").hidden = true; return; }
+  if (STATIC) {
+    const f = $("feed"); f.textContent = "";
+    f.appendChild(el("h2", "", "Telegram messages"));
+    f.appendChild(el("p", "sub", "What the owner receives on Telegram for each alert. Tap ▶ Replay the agent at the top to watch them arrive."));
+    const log = el("div", "rlog"); log.id = "rlog"; f.appendChild(log);
+    return;
+  }
   const list = await api("/api/demo/samples"); const s = $("samples"); s.textContent = "";
   for (const x of list) {
     const d = el("div"); const lines = x.body.split("\n").filter(l => /narration|desc|details/i.test(l));
@@ -329,7 +374,12 @@ async function refresh() { const r = await kpis(); await Promise.all([txs(), sta
 (async () => {
   CFG = await api("/api/config");
   $("biz").textContent = CFG.business; pills();
-  if (STATIC) { $("banner").hidden = false; $("banner").textContent = `Read-only snapshot of the demo run (${STATIC.generated}). Data comes from fictional sample bank alerts. "Verify against NEAR" checks the live testnet contract from your browser. Run it yourself: see the GitHub README.`; }
+  if (STATIC) {
+    const bn = $("banner"); bn.hidden = false; bn.textContent = "";
+    bn.appendChild(el("div", "", `Recorded demo run (${STATIC.generated}) on fictional sample bank alerts. Tap Replay to watch the agent read them one by one. "Verify against NEAR" checks the live testnet contract from your browser. Run it yourself: see the GitHub README.`));
+    const b = el("button", "", "▶ Replay the agent"); b.id = "replay"; b.style.marginTop = "10px";
+    b.onclick = () => { window.scrollTo({ top: 0, behavior: "smooth" }); replay(); }; bn.appendChild(b);
+  }
   $("filter").onchange = txs; $("period").onchange = (e) => { PERIOD = e.target.value; refresh(); };
   $("verify").onclick = verifyNear; $("anchor").onclick = anchorNear;
   $("tg").onclick = async () => { const r = await api("/api/telegram/summary", { method: "POST" }); toast(r.sent ? "Summary sent to Telegram" : "Telegram not configured (see README)"); };
