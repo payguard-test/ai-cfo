@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.venv
+data
+near/node_modules
+contracts/books-anchor/target
+.git
+__pycache__
+.pytest_cache

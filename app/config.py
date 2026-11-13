@@ -33,6 +33,9 @@ class Settings:
     near_network: str
     near_rpc: str
     books_contract: str
+    # hosted public demo: rate limits, a cap on stored transactions, a Start over button
+    public_demo: bool
+    max_tx: int
 
 
 def load() -> Settings:
@@ -57,6 +60,8 @@ def load() -> Settings:
         near_network=_get("NEAR_NETWORK", "testnet"),
         near_rpc=_get("NEAR_RPC_URL", "https://test.rpc.fastnear.com"),
         books_contract=_get("BOOKS_CONTRACT_ID"),
+        public_demo=_get("PUBLIC_DEMO", "false").lower() == "true",
+        max_tx=int(_get("MAX_TRANSACTIONS", "60")),
     )
 
 

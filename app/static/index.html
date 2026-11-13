@@ -92,7 +92,7 @@
       <div class="card" id="feed">
         <h2>Feed the agent</h2>
         <p class="sub">Sample bank alerts (fictional banks, sample data). Each one is parsed, classified, posted to the books and sent to Telegram.</p>
-        <div class="row" style="margin-bottom:10px"><button id="all">Send all samples</button><button class="ghost" id="tg">Send summary to Telegram</button></div>
+        <div class="row" style="margin-bottom:10px"><button id="all">Send all samples</button><button class="ghost" id="tg">Send summary to Telegram</button><button class="ghost" id="reset">Start over</button></div>
         <div class="samples" id="samples"></div>
         <details style="margin-top:12px"><summary class="desc" style="cursor:pointer">Paste a bank alert email</summary>
           <input id="psub" placeholder="Subject" style="width:100%;margin:8px 0">
@@ -328,11 +328,23 @@ async function refresh() { const r = await kpis(); await Promise.all([txs(), sta
 (async () => {
   CFG = await api("/api/config");
   $("biz").textContent = CFG.business; pills();
+  if (!STATIC && CFG.public) { $("banner").hidden = false; $("banner").textContent = "Live demo: every click runs the real agent. Alerts come from fictional sample banks, are classified privately on NEAR AI Cloud, posted to double-entry books, sent to the demo owner's Telegram, and can be anchored on NEAR testnet. Start over wipes the demo books."; }
   if (STATIC) { $("banner").hidden = false; $("banner").textContent = `Read-only snapshot of the demo run (${STATIC.generated}). Data comes from fictional sample bank alerts. "Verify against NEAR" checks the live testnet contract from your browser. Run it yourself: see the GitHub README.`; }
   $("filter").onchange = txs; $("period").onchange = (e) => { PERIOD = e.target.value; refresh(); };
   $("verify").onclick = verifyNear; $("anchor").onclick = anchorNear;
   $("tg").onclick = async () => { const r = await api("/api/telegram/summary", { method: "POST" }); toast(r.sent ? "Summary sent to Telegram" : "Telegram not configured (see README)"); };
-  $("all").onclick = async () => { $("all").disabled = true; let n = 0; for (const x of await api("/api/demo/samples")) { try { await api("/api/demo/sample/" + x.index, { method: "POST" }); n++; } catch (e) {} } toast(`Recorded ${n} new transaction(s)`); $("all").disabled = false; refresh(); };
+  $("all").onclick = async () => {
+    const b = $("all"); b.disabled = true; let n = 0, stop = "";
+    const list = await api("/api/demo/samples");
+    for (const x of list) {
+      b.textContent = `Reading alert ${x.index + 1} of ${list.length}…`;
+      try { await api("/api/demo/sample/" + x.index, { method: "POST" }); n++; await refresh(); }
+      catch (e) { if (!/already recorded|duplicate/i.test(e.message)) { stop = e.message; break; } }
+    }
+    b.textContent = "Send all samples"; b.disabled = false; await refresh();
+    toast(stop || (n ? `Recorded ${n} new transaction(s)${CFG.telegram ? " and sent them to Telegram" : ""}` : "All samples are already in the books. Click Start over to run them again."));
+  };
+  $("reset").onclick = async () => { try { await api("/api/demo/reset", { method: "POST" }); $("nearout").textContent = ""; toast("Books wiped. Click Send all samples to run the agent again."); refresh(); } catch (e) { toast(e.message); } };
   $("paste").onclick = async () => { try { const r = await api("/api/demo/paste", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subject: $("psub").value, body: $("pbody").value }) }); toast(`Recorded as ${r.category_label}`); $("pbody").value = ""; refresh(); } catch (e) { toast(e.message); } };
   await samples(); await refresh();
 })();

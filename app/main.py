@@ -1,6 +1,7 @@
 """AI CFO API and dashboard.  Run: uvicorn app.main:app --reload  then open http://127.0.0.1:8000"""
 import json
 import os
+import time
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
@@ -16,6 +17,27 @@ db.init()
 app = FastAPI(title="AI CFO", version="1.0.0", description="Bank alerts in, classified double-entry books, statements and Telegram updates out.")
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/brand", StaticFiles(directory=os.path.join(STATIC, "brand")), name="brand")
+
+
+_LAST: dict[str, float] = {}
+
+
+def _throttle(key: str, seconds: float) -> None:
+    """On the hosted public demo, stop anyone hammering the paid or on-chain actions."""
+    if not settings.public_demo:
+        return
+    now = time.time()
+    if now - _LAST.get(key, 0) < seconds:
+        raise HTTPException(429, f"Please wait {int(seconds - (now - _LAST[key])) + 1}s and try again (shared public demo).")
+    _LAST[key] = now
+
+
+def _room() -> None:
+    if settings.public_demo:
+        with db.conn() as c:
+            n = c.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+        if n >= settings.max_tx:
+            raise HTTPException(429, "The demo books are full. Click Start over to wipe them and run it again.")
 
 
 class EmailIn(BaseModel):
@@ -60,6 +82,7 @@ def config():
         "telegram": bool(settings.telegram_token and settings.telegram_chat_id),
         "inbox": bool(settings.imap_user and settings.imap_password),
         "near": {"contract": settings.books_contract, "network": settings.near_network},
+        "public": settings.public_demo,
         "categories": [{"key": c.key, "label": c.label, "direction": c.direction} for c in CATEGORIES.values()],
     }
 
@@ -82,6 +105,7 @@ def sample(index: int):
     if not 0 <= index < len(samples):
         raise HTTPException(404, f"there are {len(samples)} samples")
     s = samples[index]
+    _room()
     try:
         return _out(service.ingest_email(s["subject"], s["body"], s["sender"], source="sample"))
     except service.Duplicate as e:
@@ -91,12 +115,28 @@ def sample(index: int):
 @app.post("/api/demo/paste")
 def paste(p: EmailIn):
     """Dashboard 'paste an alert' box. Local demo only: put the dashboard behind auth in production."""
+    if settings.public_demo:
+        if len(p.body) > 4000:
+            raise HTTPException(413, "alert too long")
+        _room()
+        _throttle("paste", 5)
     try:
         return _out(service.ingest_email(p.subject, p.body, p.sender, source="pasted"))
     except ParseError as e:
         raise HTTPException(422, f"could not read this alert: {e}")
     except service.Duplicate as e:
         raise HTTPException(409, str(e))
+
+
+@app.post("/api/demo/reset")
+def reset():
+    """Start over: wipe the demo books (transactions and journal). Anchors already on NEAR stay on NEAR."""
+    _throttle("reset", 10)
+    with db.conn() as c:
+        c.execute("DELETE FROM journal")
+        c.execute("DELETE FROM transactions")
+        c.execute("DELETE FROM seen_messages")
+    return {"ok": True}
 
 
 @app.get("/api/demo/samples")
@@ -153,6 +193,7 @@ def reports(period: str = "all"):
 def telegram_summary(period: str | None = None):
     from . import telegram
 
+    _throttle("summary", 20)
     ok = telegram.send(service.summary_text(period))
     return {"sent": ok}
 
@@ -164,6 +205,7 @@ def near_fingerprint(period: str):
 
 @app.post("/api/near/anchor/{period}")
 def near_anchor(period: str):
+    _throttle("anchor", 45)
     try:
         return anchor.anchor(period)
     except Exception as e:  # noqa: BLE001

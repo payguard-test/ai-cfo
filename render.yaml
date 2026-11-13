@@ -1,0 +1,34 @@
+# One-click hosting on Render (free plan). Secrets are typed into the Render dashboard, never committed.
+services:
+  - type: web
+    name: ai-cfo
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PUBLIC_DEMO
+        value: "true"
+      - key: BUSINESS_NAME
+        value: Demo Foods Ltd
+      - key: CURRENCY
+        value: NGN
+      - key: NEAR_AI_MODEL
+        value: Qwen/Qwen3.8-27B
+      - key: NEAR_NETWORK
+        value: testnet
+      - key: NEAR_RPC_URL
+        value: https://test.rpc.fastnear.com
+      - key: BOOKS_CONTRACT_ID
+        value: aicfo-sph8t.testnet
+      - key: ANCHOR_ACCOUNT_ID
+        value: aicfo-sph8t.testnet
+      - key: INGEST_API_KEY
+        generateValue: true
+      - key: NEAR_AI_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: ANCHOR_PRIVATE_KEY
+        sync: false
