@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI CFO: bank alerts in, books out</title>
+<link rel="icon" type="image/svg+xml" href="brand/logo.svg">
+<link rel="icon" type="image/png" sizes="64x64" href="brand/favicon-64.png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
 <style>
   :root { --bg:#0c0f13; --panel:#141920; --panel2:#10151b; --line:#232a34; --text:#e8ecf1; --muted:#97a2b1;
     --accent:#6ee7b7; --in:#4ade80; --out:#f87171; --warn:#fbbf24; --info:#7aa2f7; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -60,7 +63,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>AI CFO <small id="biz"></small></h1>
+    <h1 style="display:flex;align-items:center;gap:10px"><img src="brand/logo.svg" alt="" width="36" height="36" style="border-radius:9px">AI CFO <small id="biz"></small></h1>
     <div class="pills" id="pills"></div>
   </header>
   <div class="banner" id="banner" hidden></div>
@@ -203,6 +206,15 @@ async function detail(id, x) {
   if (d.ai_model) add("AI model", d.ai_model + (d.ai_chat_id ? " · chat " + d.ai_chat_id : ""));
   if (d.journal) add("Journal", d.journal.map(j => `${j.side === "debit" ? "Dr" : "Cr"} ${j.account} ${money(j.amount_minor)}`).join("\n"));
   b.appendChild(tbl);
+  if (!STATIC) {
+    const box = el("div", "row"); box.style.cssText = "margin-top:14px;gap:8px;align-items:center;flex-wrap:wrap";
+    box.appendChild(el("b", "", d.status === "review" ? "Needs review. Set the category:" : "Change category:"));
+    const s = el("select");
+    for (const c of CFG.categories.filter(c => c.direction === d.direction)) { const o = el("option", "", c.label); o.value = c.key; o.selected = c.key === d.category; s.appendChild(o); }
+    const save = el("button", "", "Save category");
+    save.onclick = async () => { try { await api(`/api/transactions/${id}/category`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ category: s.value }) }); $("dlg").close(); toast("Updated. Books re-posted."); refresh(); } catch (e) { toast(e.message); } };
+    box.appendChild(s); box.appendChild(save); b.appendChild(box);
+  }
   if (d.ai_proof) {
     b.appendChild(el("h3", "", "Private inference proof: " + d.ai_proof.status));
     b.appendChild(el("p", "desc", d.ai_proof.detail || ""));

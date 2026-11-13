@@ -53,7 +53,7 @@ def anchor(period: str) -> dict:
     script = os.path.join(os.path.dirname(__file__), "..", "near", "anchor.mjs")
     out = subprocess.run(
         ["node", script, settings.books_contract, fp["period"], fp["books_root"], fp["report_hash"], str(fp["tx_count"])],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, timeout=170,
     )
     if out.returncode != 0:
         raise RuntimeError((out.stderr or out.stdout).strip()[-400:])

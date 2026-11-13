@@ -63,7 +63,20 @@ class NearAI:
             {"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens, "stream": False},
             separators=(",", ":"),
         )
-        r = self.http.post(f"{self.base}/chat/completions", data=body.encode(), headers=self._headers(), timeout=60)
+        r = None
+        for attempt in range(4):  # flaky networks: retry connection errors, timeouts, 429 and 5xx
+            try:
+                r = self.http.post(f"{self.base}/chat/completions", data=body.encode(), headers=self._headers(), timeout=90)
+            except requests.RequestException:
+                if attempt == 3:
+                    raise
+                time.sleep(2 * (attempt + 1))
+                continue
+            if r.status_code == 429 or r.status_code >= 500:
+                if attempt < 3:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+            break
         text = r.content.decode("utf-8")  # hash the exact bytes the gateway signed
         if r.status_code != 200:
             raise RuntimeError(f"NEAR AI Cloud answered {r.status_code}: {text[:300]}")

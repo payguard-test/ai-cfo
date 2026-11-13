@@ -15,20 +15,30 @@ if (!key) {
   console.error("ANCHOR_PRIVATE_KEY missing in .env (run: npm --prefix near run setup)");
   process.exit(2);
 }
-const provider = new JsonRpcProvider({ url: process.env.NEAR_RPC_URL || "https://test.rpc.fastnear.com" });
+// Flaky networks: retry, and fall back to a second public testnet RPC.
+// Re-sending the same fingerprints is harmless (it just adds the same entry to the history).
+const urls = [...new Set([process.env.NEAR_RPC_URL || "https://test.rpc.fastnear.com", "https://rpc.testnet.near.org", "https://test.rpc.fastnear.com"])];
 const signerAccount = process.env.ANCHOR_ACCOUNT_ID || contract;
-const account = new Account(signerAccount, provider, KeyPairSigner.fromSecretKey(key));
-let res;
-try {
-  res = await account.callFunctionRaw({
-  contractId: contract,
-  methodName: "anchor",
-  args: { period, books_root: booksRoot, report_hash: reportHash, tx_count: Number(txCount) },
-  gas: teraToGas("30"),
-  deposit: 0n,
-  });
-} catch (e) {
-  console.error(String(e?.message ?? e));
+let res, lastErr;
+for (let attempt = 0; attempt < 6 && !res; attempt++) {
+  const url = urls[attempt % urls.length];
+  const account = new Account(signerAccount, new JsonRpcProvider({ url }), KeyPairSigner.fromSecretKey(key));
+  try {
+    res = await account.callFunctionRaw({
+      contractId: contract,
+      methodName: "anchor",
+      args: { period, books_root: booksRoot, report_hash: reportHash, tx_count: Number(txCount) },
+      gas: teraToGas("30"),
+      deposit: 0n,
+    });
+  } catch (e) {
+    lastErr = String(e?.message ?? e);
+    if (!/fetch failed|ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket|network|timeout|503|502|429/i.test(lastErr)) break;
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+  }
+}
+if (!res) {
+  console.error(lastErr);
   process.exit(1);
 }
 const status = res?.status;

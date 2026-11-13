@@ -4,6 +4,7 @@ import os
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import anchor, db, ledger, service
@@ -14,6 +15,7 @@ from .parser import ParseError
 db.init()
 app = FastAPI(title="AI CFO", version="1.0.0", description="Bank alerts in, classified double-entry books, statements and Telegram updates out.")
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/brand", StaticFiles(directory=os.path.join(STATIC, "brand")), name="brand")
 
 
 class EmailIn(BaseModel):

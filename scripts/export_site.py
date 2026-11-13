@@ -8,6 +8,7 @@ masked sample data, statements, fingerprints and the public contract id.
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 
@@ -36,4 +37,5 @@ html = re.sub(r"<script>\n", '<script src="data.js"></script>\n<script>\n', html
 with open(os.path.join(ROOT, "docs", "index.html"), "w", encoding="utf8") as f:
     f.write(html)
 open(os.path.join(ROOT, "docs", ".nojekyll"), "w").close()
+shutil.copytree(os.path.join(ROOT, "app", "static", "brand"), os.path.join(ROOT, "docs", "brand"), dirs_exist_ok=True)
 print(f"Wrote docs/index.html and docs/data.js ({len(api['/api/transactions'])} transactions, periods {api['/api/periods']})")
