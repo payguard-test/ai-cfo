@@ -19,18 +19,110 @@ def enabled() -> bool:
     return bool(settings.telegram_token and settings.telegram_chat_id)
 
 
-def send(text: str, chat_id: str | None = None) -> bool:
-    if not settings.telegram_token or not (chat_id or settings.telegram_chat_id):
-        return False
+MAX_SUBSCRIBERS = 200
+
+
+def _post(text: str, chat_id: str) -> bool:
     try:
         r = requests.post(
             API.format(token=settings.telegram_token, method="sendMessage"),
-            json={"chat_id": chat_id or settings.telegram_chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True},
+            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True},
             timeout=15,
         )
         return r.ok
     except requests.RequestException:
         return False
+
+
+def recipients() -> list[str]:
+    """The owner's chat, plus (on the public demo) everyone who pressed Start in the bot."""
+    out = [str(settings.telegram_chat_id)] if settings.telegram_chat_id else []
+    if settings.public_demo:
+        from . import db
+
+        with db.conn() as c:
+            out += [r["chat_id"] for r in c.execute("SELECT chat_id FROM subscribers ORDER BY added_at LIMIT ?", (MAX_SUBSCRIBERS,))]
+    return list(dict.fromkeys(out))
+
+
+def send(text: str, chat_id: str | None = None) -> bool:
+    if not settings.telegram_token:
+        return False
+    if chat_id:
+        return _post(text, str(chat_id))
+    targets = recipients()
+    if not targets:
+        return False
+    first = _post(text, targets[0])
+    if len(targets) > 1:  # don't make the dashboard wait for every subscriber
+        import threading
+
+        threading.Thread(target=lambda: [_post(text, t) for t in targets[1:]], daemon=True).start()
+    return first
+
+
+_ME: dict = {}
+
+
+def bot_username() -> str:
+    if not settings.telegram_token:
+        return ""
+    if "u" not in _ME:
+        try:
+            r = requests.get(API.format(token=settings.telegram_token, method="getMe"), timeout=10).json()
+            _ME["u"] = r.get("result", {}).get("username", "") if r.get("ok") else ""
+        except requests.RequestException:
+            return ""
+    return _ME["u"]
+
+
+def webhook_secret() -> str:
+    import hashlib
+
+    return hashlib.sha256(("webhook:" + settings.telegram_token).encode()).hexdigest()[:40]
+
+
+def set_webhook(base_url: str) -> bool:
+    try:
+        r = requests.post(API.format(token=settings.telegram_token, method="setWebhook"),
+                          json={"url": base_url.rstrip("/") + "/api/telegram/webhook", "secret_token": webhook_secret(),
+                                "allowed_updates": ["message"], "drop_pending_updates": True}, timeout=15)
+        return r.ok
+    except requests.RequestException:
+        return False
+
+
+WELCOME = ("<b>AI CFO demo</b> 👋\nYou'll now get a message for every bank alert the agent records on the live demo.\n"
+           "Open the demo, click <b>Start over</b>, then <b>Send all samples</b>, and watch them arrive here.\n\n"
+           "Ask me any time: /summary /pnl /balance /review\nStop the messages: /stop")
+
+
+def handle_update(update: dict) -> None:
+    from . import db, service
+
+    msg = update.get("message") or {}
+    chat = str(msg.get("chat", {}).get("id", ""))
+    text = (msg.get("text") or "").split("@")[0].strip().lower()
+    if not chat or not text:
+        return
+    owner = chat == str(settings.telegram_chat_id)
+    if not settings.public_demo and not owner:
+        _post("This bot is private.", chat)
+        return
+    if text.startswith("/start"):
+        if settings.public_demo and not owner:
+            with db.conn() as c:
+                n = c.execute("SELECT COUNT(*) FROM subscribers").fetchone()[0]
+                if n < MAX_SUBSCRIBERS:
+                    c.execute("INSERT OR IGNORE INTO subscribers(chat_id, name) VALUES (?, ?)", (chat, (msg.get("chat", {}).get("first_name") or "")[:60]))
+        _post(WELCOME, chat)
+        return
+    if text == "/stop":
+        with db.conn() as c:
+            c.execute("DELETE FROM subscribers WHERE chat_id = ?", (chat,))
+        _post("Stopped. Send /start to get the messages again.", chat)
+        return
+    _post(service.command_reply(text), chat)
 
 
 def money(minor: int, currency: str = "NGN") -> str:

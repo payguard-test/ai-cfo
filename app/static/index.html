@@ -139,7 +139,8 @@ function pills() {
   const p = $("pills"); p.textContent = "";
   const add = (on, txt) => p.appendChild(el("span", "pill" + (on ? " on" : ""), txt));
   add(CFG.ai.enabled, CFG.ai.enabled ? "NEAR AI · " + CFG.ai.model : "AI off · keyword rules");
-  add(CFG.telegram, CFG.telegram ? "Telegram on" : "Telegram off");
+  if (CFG.telegram_bot) { const a = el("a", "pill on", "Get the alerts: @" + CFG.telegram_bot); a.href = "https://t.me/" + CFG.telegram_bot; a.target = "_blank"; a.style.textDecoration = "none"; p.appendChild(a); }
+  else add(CFG.telegram, CFG.telegram ? "Telegram on" : "Telegram off");
   add(CFG.inbox, CFG.inbox ? "Inbox reader on" : "Sample alerts");
   add(!!CFG.near.contract, CFG.near.contract ? "NEAR · " + CFG.near.contract : "NEAR contract not set");
 }
@@ -328,7 +329,7 @@ async function refresh() { const r = await kpis(); await Promise.all([txs(), sta
 (async () => {
   CFG = await api("/api/config");
   $("biz").textContent = CFG.business; pills();
-  if (!STATIC && CFG.public) { $("banner").hidden = false; $("banner").textContent = "Live demo: every click runs the real agent. Alerts come from fictional sample banks, are classified privately on NEAR AI Cloud, posted to double-entry books, sent to the demo owner's Telegram, and can be anchored on NEAR testnet. Start over wipes the demo books."; }
+  if (!STATIC && CFG.public) { $("banner").hidden = false; $("banner").textContent = `Live demo: every click runs the real agent. Alerts come from fictional sample banks, are classified privately on NEAR AI Cloud, posted to double-entry books and anchored on NEAR testnet.${CFG.telegram_bot ? ` To get the alerts on your phone, open @${CFG.telegram_bot} in Telegram and tap Start.` : ""} Start over wipes the demo books.`; }
   if (STATIC) { $("banner").hidden = false; $("banner").textContent = `Read-only snapshot of the demo run (${STATIC.generated}). Data comes from fictional sample bank alerts. "Verify against NEAR" checks the live testnet contract from your browser. Run it yourself: see the GitHub README.`; }
   $("filter").onchange = txs; $("period").onchange = (e) => { PERIOD = e.target.value; refresh(); };
   $("verify").onclick = verifyNear; $("anchor").onclick = anchorNear;

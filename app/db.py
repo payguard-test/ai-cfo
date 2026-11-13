@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS anchors (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS seen_messages (message_id TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS subscribers (chat_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', added_at TEXT NOT NULL DEFAULT (datetime('now')));
 """
 
 

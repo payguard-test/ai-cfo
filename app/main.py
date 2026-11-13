@@ -3,7 +3,7 @@ import json
 import os
 import time
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -16,6 +16,18 @@ from .parser import ParseError
 db.init()
 app = FastAPI(title="AI CFO", version="1.0.0", description="Bank alerts in, classified double-entry books, statements and Telegram updates out.")
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+@app.on_event("startup")
+def _telegram_webhook() -> None:
+    """On the hosted demo, let anyone press Start in the bot to receive the alerts (Render sets RENDER_EXTERNAL_URL)."""
+    base = os.environ.get("PUBLIC_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+    if settings.public_demo and settings.telegram_token and base:
+        import threading
+
+        from . import telegram
+
+        threading.Thread(target=telegram.set_webhook, args=(base,), daemon=True).start()
+
+
 app.mount("/brand", StaticFiles(directory=os.path.join(STATIC, "brand")), name="brand")
 
 
@@ -83,6 +95,7 @@ def config():
         "inbox": bool(settings.imap_user and settings.imap_password),
         "near": {"contract": settings.books_contract, "network": settings.near_network},
         "public": settings.public_demo,
+        "telegram_bot": _bot(),
         "categories": [{"key": c.key, "label": c.label, "direction": c.direction} for c in CATEGORIES.values()],
     }
 
@@ -187,6 +200,25 @@ def reports(period: str = "all"):
         s["trial_balance"] = ledger.trial_balance(c, period)
     s["review_count"] = service.review_count()
     return s
+
+
+def _bot() -> str:
+    from . import telegram
+
+    return telegram.bot_username() if settings.public_demo else ""
+
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(default="")):
+    from . import telegram
+
+    if not settings.telegram_token or x_telegram_bot_api_secret_token != telegram.webhook_secret():
+        raise HTTPException(403, "forbidden")
+    try:
+        telegram.handle_update(await request.json())
+    except Exception:  # noqa: BLE001 - never make Telegram retry forever
+        pass
+    return {"ok": True}
 
 
 @app.post("/api/telegram/summary")
